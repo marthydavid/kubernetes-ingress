@@ -1,3 +1,8 @@
+FROM golang:1.12 as builder
+COPY . /go/src/github.com/nginxinc/kubernetes-ingress
+WORKDIR /go/src/github.com/nginxinc/kubernetes-ingress/cmd/nginx-ingress/
+RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -ldflags "-w -X main.version=1.5.6 -X main.gitCommit=b7df06cf" -o /go/src/github.com/nginxinc/kubernetes-ingress/nginx-ingress
+
 FROM nginx:1.17.4-alpine
 
 # forward nginx access and error logs to stdout and stderr of the ingress
@@ -6,7 +11,8 @@ RUN ln -sf /proc/1/fd/1 /var/log/nginx/access.log \
 	&& ln -sf /proc/1/fd/1 /var/log/nginx/stream-access.log \
 	&& ln -sf /proc/1/fd/2 /var/log/nginx/error.log
 
-COPY nginx-ingress internal/configs/version1/nginx.ingress.tmpl internal/configs/version1/nginx.tmpl internal/configs/version2/nginx.virtualserver.tmpl /
+COPY --from=builder /go/src/github.com/nginxinc/kubernetes-ingress/nginx-ingress /
+COPY internal/configs/version1/nginx.ingress.tmpl internal/configs/version1/nginx.tmpl internal/configs/version2/nginx.virtualserver.tmpl /
 
 RUN rm /etc/nginx/conf.d/*
 
